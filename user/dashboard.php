@@ -1,56 +1,53 @@
 <?php
-session_start();
-if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
-    exit;
+require_once '../includes/db.php';
+require_once '../includes/functions.php';
+
+if (!is_logged_in()) {
+    redirect('../login.php');
 }
-include 'koneksi.php';
 
 $user_id = $_SESSION['user_id'];
 
-// Ambil data user dan poin
-$queryUser = mysqli_query($kon, "SELECT username, total_point FROM users WHERE id='$user_id'");
-$dataUser = mysqli_fetch_assoc($queryUser);
+// Ambil data user
+$stmt = $pdo->prepare("SELECT total_pain, foto_profil FROM users WHERE id = ?");
+$stmt->execute([$user_id]);
+$user = $stmt->fetch();
 
-// Ambil misi hari ini
-$tanggal_hari_ini = date('Y-m-d');
-$queryMisi = mysqli_query($kon, "SELECT * FROM missions WHERE user_id='$user_id' AND tanggal='$tanggal_hari_ini' ORDER BY id DESC");
-
-// Hitung progress ke target (misal target 1000 point)
-$target = 1000;
-$progress = min(100, ($dataUser['total_point'] / $target) * 100);
+// Ambil misi aktif
+$misi_aktif = $pdo->prepare("SELECT * FROM misi WHERE user_id = ? AND status = 'aktif'");
+$misi_aktif->execute([$user_id]);
 ?>
 
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-    <title>Dashboard</title>
-    <style>
-        body { font-family: Arial; padding: 20px; }
-        .progress { background: #eee; border-radius: 10px; overflow: hidden; height: 20px; margin: 10px 0; }
-        .progress-bar { background: green; height: 100%; width: <?= $progress ?>%; }
-        .misi { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 5px; }
-    </style>
+    <meta charset="UTF-8">
+    <title>Dashboard User</title>
 </head>
 <body>
-    <h2>Selamat datang, <?= htmlspecialchars($dataUser['username']) ?>!</h2>
-    <p>Total Poin: <strong><?= $dataUser['total_point'] ?></strong> / <?= $target ?></p>
-
-    <div class="progress">
-        <div class="progress-bar"></div>
-    </div>
-
-    <h3>Misi Hari Ini (<?= $tanggal_hari_ini ?>)</h3>
-    <?php while ($misi = mysqli_fetch_assoc($queryMisi)) { ?>
-        <div class="misi">
-            <strong><?= htmlspecialchars($misi['nama']) ?></strong><br>
-            Kategori: <?= htmlspecialchars($misi['kategori']) ?><br>
-            Poin: <?= $misi['point'] ?><br>
-            Status: <?= $misi['status'] ?>
-        </div>
-    <?php } ?>
-
-    <p><a href="tambah_misi.php">+ Tambah Misi Baru</a></p>
-    <p><a href="logout.php">Logout</a></p>
+    <h1>Dashboard User</h1>
+    <p>Halo, <?= $_SESSION['nama'] ?></p>
+    <p>Total Pain: <?= $user['total_pain'] ?></p>
+    
+    <h2>Misi Aktif</h2>
+    <?php if ($misi_aktif->rowCount() > 0): ?>
+        <ul>
+            <?php while ($misi = $misi_aktif->fetch()): ?>
+                <li>
+                    <?= $misi['nama_misi'] ?> 
+                    (<?= $misi['nilai_pain'] ?> pain)
+                    <a href="selesai_misi.php?id=<?= $misi['id'] ?>">Tandai Selesai</a>
+                </li>
+            <?php endwhile; ?>
+        </ul>
+    <?php else: ?>
+        <p>Belum ada misi aktif</p>
+    <?php endif; ?>
+    
+    <p><a href="buat_misi.php">Buat Misi Baru</a></p>
+    <p><a href="set_target.php">Set Target Reward</a></p>
+    <p><a href="klasemen.php">Lihat Klasemen</a></p>
+    
+    <p><a href="../logout.php">Logout</a></p>
 </body>
 </html>

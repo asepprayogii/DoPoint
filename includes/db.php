@@ -1,0 +1,12 @@
+<?php
+session_start();
+
+$host = "localhost";
+$dbname = "dopoint";
+$username = "root";
+$password = "";
+
+// Inisialisasi PDO
+$pdo = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+?>
