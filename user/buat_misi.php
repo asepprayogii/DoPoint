@@ -14,6 +14,15 @@ $success = '';
 // Ambil kategori misi dari database
 $kategori = $pdo->query("SELECT * FROM kategori_misi")->fetchAll(PDO::FETCH_ASSOC);
 
+// Tambahkan array asosiatif untuk range kategori
+$kategori_range = [];
+foreach ($kategori as $kat) {
+    $kategori_range[$kat['id']] = [
+        'min' => $kat['min_pain'],
+        'max' => $kat['max_pain']
+    ];
+}
+
 // Proses form jika ada POST request
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $kategori_id = $_POST['kategori_id'];
@@ -301,6 +310,104 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         document.addEventListener('DOMContentLoaded', function() {
             updateCategoryInfo();
         });
+
+        // Tambahkan JS untuk update min/max input number sesuai kategori
+        const kategoriRange = <?= json_encode($kategori_range) ?>;
+        document.getElementById('kategori_id').addEventListener('change', function() {
+            const val = this.value;
+            const inputPain = document.getElementById('nilai_pain');
+            if (kategoriRange[val]) {
+                inputPain.min = kategoriRange[val].min;
+                inputPain.max = kategoriRange[val].max;
+                inputPain.placeholder = `Masukkan nilai pain (${kategoriRange[val].min} - ${kategoriRange[val].max})`;
+            } else {
+                inputPain.min = 1;
+                inputPain.max = '';
+                inputPain.placeholder = 'Masukkan nilai pain';
+            }
+        });
+        // Inisialisasi min/max saat load jika kategori sudah terpilih
+        window.addEventListener('DOMContentLoaded', function() {
+            const kategoriSelect = document.getElementById('kategori_id');
+            const inputPain = document.getElementById('nilai_pain');
+            if (kategoriRange[kategoriSelect.value]) {
+                inputPain.min = kategoriRange[kategoriSelect.value].min;
+                inputPain.max = kategoriRange[kategoriSelect.value].max;
+                inputPain.placeholder = `Masukkan nilai pain (${kategoriRange[kategoriSelect.value].min} - ${kategoriRange[kategoriSelect.value].max})`;
+            }
+        });
+
+        // Tambahkan update info range di atas input
+        function updatePainRangeInfo() {
+            const kategoriSelect = document.getElementById('kategori_id');
+            const painInfo = document.getElementById('pain-range-info');
+            const val = kategoriSelect.value;
+            if (kategoriRange[val]) {
+                painInfo.textContent = `Nilai pain untuk kategori ini hanya boleh antara ${kategoriRange[val].min} dan ${kategoriRange[val].max}`;
+            } else {
+                painInfo.textContent = '';
+            }
+        }
+        document.getElementById('kategori_id').addEventListener('change', function() {
+            updatePainRangeInfo();
+        });
+        window.addEventListener('DOMContentLoaded', function() {
+            updatePainRangeInfo();
+        });
+        // Update placeholder dinamis sesuai kategori
+        function updatePainPlaceholder() {
+            const kategoriSelect = document.getElementById('kategori_id');
+            const inputPain = document.getElementById('nilai_pain');
+            const val = kategoriSelect.value;
+            if (kategoriRange[val]) {
+                inputPain.placeholder = `Masukkan nilai pain (${kategoriRange[val].min} - ${kategoriRange[val].max})`;
+            } else {
+                inputPain.placeholder = 'Masukkan nilai pain';
+            }
+        }
+        document.getElementById('kategori_id').addEventListener('change', function() {
+            updatePainPlaceholder();
+        });
+        window.addEventListener('DOMContentLoaded', function() {
+            updatePainPlaceholder();
+        });
+        // Blokir input selain angka dan angka di luar range
+        const inputPain = document.getElementById('nilai_pain');
+        inputPain.addEventListener('keypress', function(e) {
+            const kategoriSelect = document.getElementById('kategori_id');
+            const val = kategoriSelect.value;
+            if (!kategoriRange[val]) return;
+            const min = kategoriRange[val].min;
+            const max = kategoriRange[val].max;
+            // Hanya izinkan angka
+            if (!/\d/.test(e.key)) {
+                e.preventDefault();
+                return;
+            }
+            // Cek hasil input jika ditambah karakter baru
+            let next = this.value + e.key;
+            let num = parseInt(next);
+            if (num < min || num > max) {
+                e.preventDefault();
+            }
+        });
+        // Jika paste, filter juga
+        inputPain.addEventListener('paste', function(e) {
+            const kategoriSelect = document.getElementById('kategori_id');
+            const val = kategoriSelect.value;
+            if (!kategoriRange[val]) return;
+            const min = kategoriRange[val].min;
+            const max = kategoriRange[val].max;
+            let paste = (e.clipboardData || window.clipboardData).getData('text');
+            if (!/^\d+$/.test(paste)) {
+                e.preventDefault();
+                return;
+            }
+            let num = parseInt(paste);
+            if (num < min || num > max) {
+                e.preventDefault();
+            }
+        });
     </script>
 </head>
 <body>
@@ -366,8 +473,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 <div class="form-group">
                     <label for="nilai_pain">Nilai Pain *</label>
+                    <div id="pain-range-info" style="margin-bottom:8px; color:#555; font-size:0.95em;"></div>
                     <input type="number" name="nilai_pain" id="nilai_pain" required 
-                           min="1" placeholder="Masukkan nilai pain"
+                           min="1" placeholder="Masukkan nilai pain" 
                            value="<?= isset($_POST['nilai_pain']) ? $_POST['nilai_pain'] : '' ?>">
                     <div class="category-info">
                         Pain adalah poin yang mewakili usaha yang diperlukan untuk menyelesaikan misi ini
