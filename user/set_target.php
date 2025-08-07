@@ -7,49 +7,46 @@ if (!is_logged_in()) {
 }
 
 $user_id = $_SESSION['user_id'];
-$target_id = isset($_GET['target_id']) ? (int)$_GET['target_id'] : 0;
+$error = '';
+$success = '';
 
-if ($target_id <= 0) {
-    $_SESSION['error'] = 'ID target tidak valid!';
-    redirect('set_target.php');
+// Proses form jika ada POST request
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $hadiah = trim($_POST['hadiah']);
+    $target_pain = (int)$_POST['target_pain'];
+    if (empty($hadiah) || $target_pain <= 0) {
+        $error = 'Harap isi semua kolom!';
+    } else {
+        // Set semua target aktif user menjadi non-aktif
+        $pdo->prepare("UPDATE target_reward SET status = 'nonaktif' WHERE user_id = ? AND status = 'aktif'")
+            ->execute([$user_id]);
+        // Simpan target baru
+        $stmt = $pdo->prepare("INSERT INTO target_reward (user_id, hadiah, target_pain, status) VALUES (?, ?, ?, 'aktif')");
+        if ($stmt->execute([$user_id, $hadiah, $target_pain])) {
+            $success = 'Target baru berhasil disimpan!';
+        } else {
+            $error = 'Gagal menyimpan target. Coba lagi.';
+        }
+    }
 }
-
-// Ambil data target
-$stmt = $pdo->prepare("SELECT * FROM target_reward 
-                      WHERE id = ? AND user_id = ? AND status = 'tercapai'");
-$stmt->execute([$target_id, $user_id]);
-$target = $stmt->fetch();
-
-if (!$target) {
-    $_SESSION['error'] = 'Target tidak ditemukan atau belum tercapai!';
-    redirect('set_target.php');
-}
-
-// Proses klaim reward
-$pdo->beginTransaction();
-
-try {
-    // Update status target menjadi "diklaim"
-    $update_target = $pdo->prepare("UPDATE target_reward SET status = 'diklaim' WHERE id = ?");
-    $update_target->execute([$target_id]);
-    
-    // Simpan ke riwayat klaim reward
-    $stmt = $pdo->prepare("INSERT INTO reward_claim (user_id, target_id, hadiah) 
-                          VALUES (?, ?, ?)");
-    $stmt->execute([$user_id, $target_id, $target['hadiah']]);
-    
-    // Commit transaksi
-    $pdo->commit();
-    
-    // Tambahkan aktivitas ke riwayat
-    $aktivitas = "Mengklaim reward: " . $target['hadiah'];
-    $pdo->prepare("INSERT INTO aktivitas_terbaru (user_id, aktivitas) VALUES (?, ?)")
-        ->execute([$user_id, $aktivitas]);
-    
-    $_SESSION['success'] = 'Reward berhasil diklaim! Selamat menikmati ' . $target['hadiah'] . '!';
-} catch (Exception $e) {
-    $pdo->rollBack();
-    $_SESSION['error'] = 'Terjadi kesalahan: ' . $e->getMessage();
-}
-
-redirect('dashboard.php');
+?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Set Target Reward</title>
+</head>
+<body>
+    <h2>Set Target Reward Baru</h2>
+    <?php if ($error): ?><div style="color:red;"> <?= $error ?> </div><?php endif; ?>
+    <?php if ($success): ?><div style="color:green;"> <?= $success ?> </div><?php endif; ?>
+    <form method="POST">
+        <label>Hadiah:</label><br>
+        <input type="text" name="hadiah" required><br><br>
+        <label>Target Pain:</label><br>
+        <input type="number" name="target_pain" min="1" required><br><br>
+        <button type="submit">Simpan Target</button>
+    </form>
+    <a href="dashboard.php">&larr; Kembali ke Dashboard</a>
+</body>
+</html>
