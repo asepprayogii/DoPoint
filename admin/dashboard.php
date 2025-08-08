@@ -70,49 +70,7 @@ $reward_pending = $pdo->query("SELECT COUNT(*) FROM reward_claim WHERE status_ve
             padding: 20px;
         }
         
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            background: white;
-            padding: 15px 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        .admin-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        
-        .admin-avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid var(--primary);
-        }
-        
-        .nav-menu {
-            display: flex;
-            gap: 20px;
-        }
-        
-        .nav-link {
-            text-decoration: none;
-            color: var(--dark);
-            font-weight: 500;
-            padding: 8px 15px;
-            border-radius: 5px;
-            transition: all 0.3s;
-        }
-        
-        .nav-link:hover, .nav-link.active {
-            background-color: var(--primary);
-            color: white;
-        }
+        /* Navbar styles sudah ada di includes/navbar.php */
         
         .card-grid {
             display: grid;
@@ -249,25 +207,10 @@ $reward_pending = $pdo->query("SELECT COUNT(*) FROM reward_claim WHERE status_ve
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <div class="admin-info">
-                <img src="../foto_profil/<?= $_SESSION['foto_profil'] ?>" alt="Avatar" class="admin-avatar">
-                <div>
-                    <h2>Admin: <?= $_SESSION['nama'] ?></h2>
-                    <p>Dashboard Admin</p>
-                </div>
-            </div>
-            
-            <nav class="nav-menu">
-                <a href="dashboard.php" class="nav-link active">Dashboard</a>
-                <a href="kelola_kategori.php" class="nav-link">Kategori</a>
-                <a href="data_user.php" class="nav-link">Data User</a>
-                <a href="statistik.php" class="nav-link">Statistik</a>
-                <a href="verifikasi_reward.php" class="nav-link">Verifikasi Reward</a>
-                <a href="notifikasi.php" class="nav-link">Notifikasi</a>
-                <a href="../logout.php" class="nav-link">Logout</a>
-            </nav>
-        </div>
+        <?php 
+        $current_page = 'admin_dashboard';
+        include '../includes/navbar.php'; 
+        ?>
         
         <?php if ($reward_pending > 0): ?>
             <div class="alert alert-warning">

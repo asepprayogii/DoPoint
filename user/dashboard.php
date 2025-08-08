@@ -50,6 +50,15 @@ $statistik = [
     'misi_selesai' => $misi_selesai,
     'reward_diklaim' => $reward_diklaim,
 ];
+
+// Ambil notifikasi terbaru
+$notifikasi = $pdo->prepare("SELECT * FROM notifikasi WHERE user_id = ? ORDER BY created_at DESC LIMIT 5");
+$notifikasi->execute([$user_id]);
+
+// Ambil data user lengkap untuk level
+$user_data = $pdo->prepare("SELECT total_pain, foto_profil, created_at, level FROM users WHERE id = ?");
+$user_data->execute([$user_id]);
+$user_full = $user_data->fetch();
 ?>
 
 <!DOCTYPE html>
@@ -86,49 +95,7 @@ $statistik = [
             padding: 20px;
         }
         
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            background: white;
-            padding: 15px 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        
-        .user-avatar {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid var(--primary);
-        }
-        
-        .nav-menu {
-            display: flex;
-            gap: 20px;
-        }
-        
-        .nav-link {
-            text-decoration: none;
-            color: var(--dark);
-            font-weight: 500;
-            padding: 8px 15px;
-            border-radius: 5px;
-            transition: all 0.3s;
-        }
-        
-        .nav-link:hover, .nav-link.active {
-            background-color: var(--primary);
-            color: white;
-        }
+        /* Navbar styles sudah ada di includes/navbar.php */
         
         .dashboard-grid {
             display: grid;
@@ -290,24 +257,10 @@ $statistik = [
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <div class="user-info">
-                <img src="../foto_profil/<?= $user['foto_profil'] ?>" alt="Avatar" class="user-avatar">
-                <div>
-                    <h2>Halo, <?= $_SESSION['nama'] ?></h2>
-                    <p>Member sejak <?= date('d M Y', strtotime($user['created_at'])) ?></p>
-                </div>
-            </div>
-            
-            <nav class="nav-menu">
-                <a href="dashboard.php" class="nav-link active">Dashboard</a>
-                <a href="buat_misi.php" class="nav-link">Buat Misi</a>
-                <a href="set_target.php" class="nav-link">Target Reward</a>
-                <a href="klasemen.php" class="nav-link">Leaderboard</a>
-                <a href="profil.php" class="nav-link">Profil</a>
-                <a href="../logout.php" class="nav-link">Logout</a>
-            </nav>
-        </div>
+        <?php 
+        $current_page = 'dashboard';
+        include '../includes/navbar.php'; 
+        ?>
         
         <div class="dashboard-grid">
             <div class="main-content">
@@ -352,7 +305,8 @@ $statistik = [
                             <div class="stat-label">Reward Diklaim</div>
                         </div>
                     </div>
-                    <a href="riwayat_misi.php" class="btn">Lihat Riwayat Lengkap</a>
+                    <a href="riwayat_misi.php" class="btn">Lihat Riwayat Misi</a>
+                    <a href="riwayat_reward.php" class="btn" style="margin-left: 10px;">Lihat Riwayat Reward</a>
                 </div>
                 
                 <!-- Misi Aktif -->
@@ -383,6 +337,56 @@ $statistik = [
             </div>
             
             <div class="sidebar">
+                <!-- Level Badge -->
+                <div class="card">
+                    <h3 class="card-title">Level & Badge</h3>
+                    <div style="text-align: center; padding: 15px;">
+                        <div style="font-size: 2rem; margin-bottom: 10px;">
+                            <?php if ($user_full['level'] == 'Master'): ?>
+                                👑
+                            <?php elseif ($user_full['level'] == 'Pejuang'): ?>
+                                🏆
+                            <?php else: ?>
+                                🌟
+                            <?php endif; ?>
+                        </div>
+                        <h4 style="margin-bottom: 5px;"><?= $user_full['level'] ?></h4>
+                        <p style="color: #666; font-size: 0.9rem;">
+                            <?= $user_full['total_pain'] ?> pain points
+                        </p>
+                        <div style="margin-top: 10px; padding: 8px; background: #f8f9fa; border-radius: 5px; font-size: 0.8rem;">
+                            <?php if ($user_full['level'] == 'Pemula'): ?>
+                                Target: 5 reward untuk naik level
+                            <?php elseif ($user_full['level'] == 'Pejuang'): ?>
+                                Target: 10 reward untuk naik level
+                            <?php else: ?>
+                                Level tertinggi tercapai!
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Notifikasi -->
+                <div class="card">
+                    <h3 class="card-title">Notifikasi Terbaru</h3>
+                    <?php if ($notifikasi->rowCount() > 0): ?>
+                        <div style="max-height: 300px; overflow-y: auto;">
+                            <?php while ($notif = $notifikasi->fetch()): ?>
+                                <div style="margin-bottom: 10px; padding: 10px; background: <?= $notif['dibaca'] ? '#f8f9fa' : '#e3f2fd' ?>; border-radius: 5px; border-left: 3px solid var(--primary);">
+                                    <div style="font-weight: 500; margin-bottom: 5px;"><?= htmlspecialchars($notif['judul']) ?></div>
+                                    <div style="font-size: 0.9rem; color: #666;"><?= htmlspecialchars($notif['isi']) ?></div>
+                                    <div style="font-size: 0.8rem; color: #999; margin-top: 5px;">
+                                        <?= date('d M Y H:i', strtotime($notif['created_at'])) ?>
+                                    </div>
+                                </div>
+                            <?php endwhile; ?>
+                        </div>
+                        <a href="notifikasi.php" class="btn btn-block" style="margin-top: 10px;">Lihat Semua Notifikasi</a>
+                    <?php else: ?>
+                        <p style="text-align: center; color: #666; padding: 20px;">Belum ada notifikasi</p>
+                    <?php endif; ?>
+                </div>
+                
                 <!-- Target Reward -->
                 <div class="card">
                     <h3 class="card-title">Target Reward</h3>

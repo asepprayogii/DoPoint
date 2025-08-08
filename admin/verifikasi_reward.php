@@ -14,21 +14,39 @@ if (isset($_POST['verifikasi'])) {
     $id = (int)$_POST['id'];
     $status = $_POST['status'];
     $catatan = trim($_POST['catatan']);
-    $stmt = $pdo->prepare("UPDATE reward_claim SET status_verifikasi = ?, catatan = ?, verified_at = NOW() WHERE id = ?");
-    if ($stmt->execute([$status, $catatan, $id])) {
-        $success = 'Status reward berhasil diperbarui!';
-        // Jika diterima, tambahkan aktivitas
-        if ($status === 'diterima') {
+            $stmt = $pdo->prepare("UPDATE reward_claim SET status_verifikasi = ?, catatan = ?, verified_at = NOW() WHERE id = ?");
+        if ($stmt->execute([$status, $catatan, $id])) {
+            $success = 'Status reward berhasil diperbarui!';
+            
+            // Ambil data reward untuk notifikasi
             $stmt_reward = $pdo->prepare("SELECT user_id, hadiah FROM reward_claim WHERE id = ?");
             $stmt_reward->execute([$id]);
             $reward = $stmt_reward->fetch();
-            $aktivitas = "Reward diterima: " . $reward['hadiah'];
-            $pdo->prepare("INSERT INTO aktivitas_terbaru (user_id, aktivitas) VALUES (?, ?)")
-                ->execute([$reward['user_id'], $aktivitas]);
+            
+            // Kirim notifikasi ke user
+            if ($status === 'diterima') {
+                $notif_judul = "Reward Diterima! 🎉";
+                $notif_isi = "Selamat! Reward Anda '{$reward['hadiah']}' telah diterima oleh admin. Selamat menikmati!";
+                
+                // Tambahkan aktivitas
+                $aktivitas = "Reward diterima: " . $reward['hadiah'];
+                $pdo->prepare("INSERT INTO aktivitas_terbaru (user_id, aktivitas) VALUES (?, ?)")
+                    ->execute([$reward['user_id'], $aktivitas]);
+            } else {
+                $notif_judul = "Reward Ditolak";
+                $notif_isi = "Reward Anda '{$reward['hadiah']}' ditolak oleh admin.";
+                if (!empty($catatan)) {
+                    $notif_isi .= " Catatan: " . $catatan;
+                }
+            }
+            
+            // Insert notifikasi
+            $pdo->prepare("INSERT INTO notifikasi (user_id, jenis, judul, isi) VALUES (?, 'reward', ?, ?)")
+                ->execute([$reward['user_id'], $notif_judul, $notif_isi]);
+                
+        } else {
+            $error = 'Gagal memperbarui status reward.';
         }
-    } else {
-        $error = 'Gagal memperbarui status reward.';
-    }
 }
 // Ambil semua reward yang perlu diverifikasi
 $rewards = $pdo->query("SELECT rc.*, u.nama as user_nama, u.email, u.foto_profil, tr.target_pain FROM reward_claim rc JOIN users u ON rc.user_id = u.id JOIN target_reward tr ON rc.target_id = tr.id WHERE rc.status_verifikasi = 'pending' ORDER BY rc.claimed_at DESC")->fetchAll(PDO::FETCH_ASSOC);
